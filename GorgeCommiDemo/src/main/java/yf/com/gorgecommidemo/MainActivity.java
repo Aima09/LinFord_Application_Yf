@@ -1,12 +1,18 @@
 package yf.com.gorgecommidemo;
 
+import android.content.ComponentName;
+import android.content.Context;
+import android.content.Intent;
+import android.content.ServiceConnection;
 import android.os.Bundle;
+import android.os.IBinder;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 
+import com.yf.serial.RS485Service;
 import com.yf.serial.SerialPort;
 
 import java.io.FileOutputStream;
@@ -20,29 +26,56 @@ import butterknife.ButterKnife;
 import butterknife.OnClick;
 
 public class MainActivity extends AppCompatActivity {
+    private static final String TAG ="MainActivity" ;
     SerialPort mSerialPort;
     OutputStream mOutputStream;
     InputStream mInputStream;
 
     private SendThread mSendThread;
-
-    @BindView(R.id.tv_data) EditText mTvData;
-    @BindView(R.id.send) Button mSend;
-    @BindView(R.id.receive_data) TextView mReceiveData;
+    RS485Service.MyBinder myBinder;
+    @BindView(R.id.tv_data)
+    EditText mTvData;
+    @BindView(R.id.send)
+    Button mSend;
+    @BindView(R.id.receive_data)
+    TextView mReceiveData;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         ButterKnife.bind(this);
-//        Intent intent=new Intent(this, ASerialEngine.class);
-//        startService(intent);
+        Intent intent = new Intent(this, RS485Service.class);
+        bindService(intent, new MySerialConnection(), Context.BIND_AUTO_CREATE);
+
     }
+
+    class MySerialConnection implements ServiceConnection {
+
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            myBinder = (RS485Service.MyBinder) service;
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+
+        }
+    }
+
 
     @OnClick(R.id.send)
     public void onViewClicked() {
-       // testInterface1();
-        transferData(new byte[]{0x00,0x01},2);
+        // testInterface1();
+       // transferData(new byte[]{0x00, 0x01}, 2);
+        byte[] b = new byte[2];
+        b[0] = 0x01;
+        b[1] = 0x02;
+        Log.i(TAG,"myBinder = "+myBinder);
+//        Log.i(TAG,"myBinder = "+myBinder);
+        myBinder.getISSend().transferData(b, b.length);
+
+
     }
 
     private class ReadThread1 extends Thread {
@@ -59,11 +92,11 @@ public class MainActivity extends AppCompatActivity {
                     if (size > 0) {
                         System.out.print("1:--> ");
                         for (int i = 0; i < size; i++) {
-                           // System.out.print((buffer[i] & 0xFF) + " ");
-                            mReceiveData.setText(new String(buffer,0,size));
+                            // System.out.print((buffer[i] & 0xFF) + " ");
+                            mReceiveData.setText(new String(buffer, 0, size));
                         }
                         System.out.println();
-                    }else {
+                    } else {
                         mReceiveData.setText("对不起，没有数据返回");
                     }
 
@@ -74,6 +107,7 @@ public class MainActivity extends AppCompatActivity {
             }
         }
     }
+
     private byte[] mSendBuffer;
     private boolean bReading = true;
 
@@ -136,7 +170,7 @@ public class MainActivity extends AppCompatActivity {
             mSendThread.start();
         } else {
             if (mSendThread.isAlive()) {
-                Log.e("Test","mSendThread.isAlive() !!!");
+                Log.e("Test", "mSendThread.isAlive() !!!");
                 return;
             }
             mSendThread.run();
@@ -184,7 +218,6 @@ public class MainActivity extends AppCompatActivity {
 */
 
 
-
     private void testInterface1() {
         try {
 //            Log.e("Test","start send");
@@ -227,13 +260,13 @@ public class MainActivity extends AppCompatActivity {
 //            if (config_server.is209()) {
 //                output = new FileOutputStream(CON_485_V209_PATH);
 //            } else {
-                output = new FileOutputStream(CON_485_PATH);
+            output = new FileOutputStream(CON_485_PATH);
 //            }
             output.write(b);
             output.flush();
             output.close();
         } catch (IOException e) {
-            Log.e("test","open file error . " + e);
+            Log.e("test", "open file error . " + e);
         }
         return 0;
     }

@@ -26,6 +26,11 @@ android {
             jniLibs.srcDirs = ['libs']
         }
     }
+    externalNativeBuild {
+        ndkBuild {
+            path file("src\\main\\jni\\Android.mk")
+        }
+    }
 }
 
 dependencies {
@@ -39,7 +44,7 @@ dependencies {
 
     //findViewById控件
     compile 'com.jakewharton:butterknife:8.4.0'
-    compile 'com.jakewharton:butterknife-compiler:8.4.0'
+    annotationProcessor 'com.jakewharton:butterknife-compiler:8.4.0'
 
     compile 'com.orhanobut:logger:2.1.1'
 }

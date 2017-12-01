@@ -3,7 +3,8 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/GorgeCommiDemo/GorgeCommiDemo.iml" filepath="$PROJECT_DIR$/GorgeCommiDemo/GorgeCommiDemo.iml" />
-      <module fileurl="file://$PROJECT_DIR$/LinFord_Application.iml" filepath="$PROJECT_DIR$/LinFord_Application.iml" />
+      <module fileurl="file://E:\workspace\AS_Project\LinFord_Application_Yf\LinFord_Application.iml" filepath="E:\workspace\AS_Project\LinFord_Application_Yf\LinFord_Application.iml" />
+      <module fileurl="file://$PROJECT_DIR$/LinFord_Application_Yf.iml" filepath="$PROJECT_DIR$/LinFord_Application_Yf.iml" />
       <module fileurl="file://$PROJECT_DIR$/app/app.iml" filepath="$PROJECT_DIR$/app/app.iml" />
     </modules>
   </component>

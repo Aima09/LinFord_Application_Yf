@@ -4,12 +4,13 @@
  * xuie	create 2015-4-30 ����9:40:29
  */
 
-package com.yf.serial;
+package com.yf.serial.rs485;
 
 import android.app.Service;
 import android.content.Intent;
 
 import com.orhanobut.logger.Logger;
+import com.yf.serial.SerialPort;
 
 import java.io.File;
 import java.io.FileOutputStream;
