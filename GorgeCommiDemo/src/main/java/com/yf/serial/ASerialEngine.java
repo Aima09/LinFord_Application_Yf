@@ -1,72 +1,63 @@
-package yf.com.gorgecommidemo;
+/**
+ * ASerialEngine.java[V 1.0.0]
+ * classes: com.YF.YuanFang.YFServer.serial.rs485.ASerialEngine
+ * xuie	create 2015-4-30 ����9:40:29
+ */
 
-import android.os.Bundle;
-import android.support.v7.app.AppCompatActivity;
-import android.util.Log;
-import android.widget.Button;
-import android.widget.EditText;
-import android.widget.TextView;
+package com.yf.serial;
 
-import com.yf.serial.SerialPort;
+import android.app.Service;
+import android.content.Intent;
 
+import com.orhanobut.logger.Logger;
+
+import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.security.InvalidParameterException;
 
-import butterknife.BindView;
-import butterknife.ButterKnife;
-import butterknife.OnClick;
 
-public class MainActivity extends AppCompatActivity {
-    SerialPort mSerialPort;
-    OutputStream mOutputStream;
-    InputStream mInputStream;
+/**
+ * com.YF.YuanFang.YFServer.serial.rs485.ASerialEngine
+ * 
+ * @author xuie <br/>
+ *         create at 2015-4-30 ����9:40:29
+ */
 
+public abstract class ASerialEngine extends Service {
+    private SerialPort mSerialPort;
+    private OutputStream mOutputStream;
+    private InputStream mInputStream;
+    private ReadThread mReadThread;
     private SendThread mSendThread;
 
-    @BindView(R.id.tv_data) EditText mTvData;
-    @BindView(R.id.send) Button mSend;
-    @BindView(R.id.receive_data) TextView mReceiveData;
+    private byte[] mSendBuffer;
+    private boolean bReading = true;
 
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
-        ButterKnife.bind(this);
-//        Intent intent=new Intent(this, ASerialEngine.class);
-//        startService(intent);
-    }
+    private class ReadThread extends Thread {
 
-    @OnClick(R.id.send)
-    public void onViewClicked() {
-       // testInterface1();
-        transferData(new byte[]{0x00,0x01},2);
-    }
-
-    private class ReadThread1 extends Thread {
         @Override
         public void run() {
-            while (true) {
+            super.run();
+            while (bReading) {
                 int size;
                 try {
-                    if (mInputStream == null)
-                        return;
-                    byte[] buffer = new byte[64];
-                    size = mInputStream.read(buffer);
-                    System.out.println("1:size:" + size);
-                    if (size > 0) {
-                        System.out.print("1:--> ");
+                    synchronized (this) {
+                        byte[] buffer = new byte[64];
+                        if (mInputStream == null)
+                            return;
+                        size = mInputStream.read(buffer);
+                        // ////////
                         for (int i = 0; i < size; i++) {
-                           // System.out.print((buffer[i] & 0xFF) + " ");
-                            mReceiveData.setText(new String(buffer,0,size));
+                            Logger.i(" engine= "+(buffer[i] & 0xFF) + " ");
                         }
-                        System.out.println();
-                    }else {
-                        mReceiveData.setText("对不起，没有数据返回");
+                        // /////
+                        if (size > 0) {
+                            analyzeData(buffer, size);
+                        }
                     }
-
                 } catch (IOException e) {
                     e.printStackTrace();
                     return;
@@ -74,8 +65,6 @@ public class MainActivity extends AppCompatActivity {
             }
         }
     }
-    private byte[] mSendBuffer;
-    private boolean bReading = true;
 
     private class SendThread extends Thread {
         @Override
@@ -124,6 +113,8 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    protected abstract void analyzeData(final byte[] buffer, final int size);
+
     protected synchronized void transferData(final byte[] buffer, final int size) {
         for (int i = 0; i < buffer.length; i++) {
             System.out.print((buffer[i] & 0xFF) + " ");
@@ -136,7 +127,7 @@ public class MainActivity extends AppCompatActivity {
             mSendThread.start();
         } else {
             if (mSendThread.isAlive()) {
-                Log.e("Test","mSendThread.isAlive() !!!");
+                Logger.e("mSendThread.isAlive() !!!");
                 return;
             }
             mSendThread.run();
@@ -144,18 +135,25 @@ public class MainActivity extends AppCompatActivity {
         // new SendThread().start();
     }
 
-/*
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        init();
+    }
+
     private void init() {
         closeStream();
         bReading = false;
 
         // 获取波特率
-        if (config_server.isSuokete()) {
-            BAUDRATE = PreferenceUtils.getPrefInt(this, config_server.RS485_BAUDRATE, 4800);
-        } else {
-            BAUDRATE = PreferenceUtils.getPrefInt(this, config_server.RS485_BAUDRATE, 9600);
-        }
-        log.d("current baudrate is " + BAUDRATE);
+        //if (config_server.isSuokete()) {
+        //    BAUDRATE = PreferenceUtils.getPrefInt(this, config_server.RS485_BAUDRATE, 4800);
+        //} else {
+        //    BAUDRATE = PreferenceUtils.getPrefInt(this, config_server.RS485_BAUDRATE, 9600);
+        //}
+        //sjt
+        BAUDRATE=9600;
+        Logger.d("current baudrate is " + BAUDRATE);
         mSendBuffer = new byte[1024];
 
         try {
@@ -163,57 +161,49 @@ public class MainActivity extends AppCompatActivity {
             mOutputStream = mSerialPort.getOutputStream();
             mInputStream = mSerialPort.getInputStream();
 
-			*/
-/* Create a receiving thread *//*
-
+			/* Create a receiving thread */
             mReadThread = new ReadThread();
             bReading = true;
             mReadThread.start();
 
             switchDirection(ENABLE_RCV);
 
-            log.i("Create RS485 Port -> ttyS1, bps " + getBAUDRATE());
+            Logger.i("Create RS485 Port -> ttyS1, bps " + getBAUDRATE());
         } catch (SecurityException e) {
-            log.e(getResources().getString(R.string.error_security));
+            Logger.e("getResources().getString(R.string.error_security)");
         } catch (IOException e) {
-            log.e(getResources().getString(R.string.error_unknown));
+            Logger.e("getResources().getString(R.string.error_unknown)");
         } catch (InvalidParameterException e) {
-            log.e(getResources().getString(R.string.error_configuration));
+            Logger.e("getResources().getString(R.string.error_configuration)");
         }
     }
-*/
 
-
-
-    private void testInterface1() {
-        try {
-//            Log.e("Test","start send");
-//            mSerialPort = new SerialPort(new File("/dev/ttyS1"), 9600, 0);
-//            mOutputStream = mSerialPort.getOutputStream();
-//            mInputStream = mSerialPort.getInputStream();
-//            String testData=mTvData.getText().toString();
-//
-//            // enable 485 rcv
-//            switchDirection(ENABLE_SEND);
-//            byte[] b = {0x00, 0x01};
-//            mOutputStream.write(b);
-//
-//            // enable 485 rcv
-//            switchDirection(ENABLE_RCV);
-//            Log.e("Test","start send");
-
-        } catch (SecurityException e) {
-            e.printStackTrace();
-            return;
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//            return;
-        } catch (InvalidParameterException e) {
-            e.printStackTrace();
-            return;
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        Logger.d("onStartCommand");
+        if (intent != null && intent.getBooleanExtra("buradRrate", false)) {
+            Logger.d("onStartCommand init");
+            init();
         }
+        return super.onStartCommand(intent, flags, startId);
+    }
 
-        new ReadThread1().start();
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        Logger.d("onDestroy!");
+        closeStream();
+    }
+
+    private void closeStream() {
+        try {
+            mInputStream.close();
+            mInputStream = null;
+
+            mOutputStream.close();
+            mOutputStream = null;
+        } catch (Exception e) {
+        }
     }
 
     private final String CON_485_PATH = "/sys/bus/platform/drivers/rk29-keypad/rk29-keypad/control_485_func";
@@ -224,18 +214,32 @@ public class MainActivity extends AppCompatActivity {
     private int switchDirection(byte b) {
         try {
             OutputStream output = null;
-//            if (config_server.is209()) {
-//                output = new FileOutputStream(CON_485_V209_PATH);
-//            } else {
-                output = new FileOutputStream(CON_485_PATH);
-//            }
+            //if (config_server.is209()) {
+            //    output = new FileOutputStream(CON_485_V209_PATH);
+            //} else {
+            //    output = new FileOutputStream(CON_485_PATH);
+            //}
+            //sjt
+            output = new FileOutputStream(CON_485_PATH);
+
             output.write(b);
             output.flush();
             output.close();
         } catch (IOException e) {
-            Log.e("test","open file error . " + e);
+            Logger.e("open file error . " + e);
         }
         return 0;
+    }
+
+    private int BAUDRATE;
+
+    public int getBAUDRATE() {
+        return BAUDRATE;
+    }
+
+    public void setBAUDRATE(int bAUDRATE) {
+        BAUDRATE = bAUDRATE;
+        //PreferenceUtils.setPref(this, config_server.RS485_BAUDRATE, bAUDRATE);
     }
 
 }
