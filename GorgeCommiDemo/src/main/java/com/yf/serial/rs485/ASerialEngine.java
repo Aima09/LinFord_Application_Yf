@@ -78,7 +78,7 @@ public abstract class ASerialEngine extends Service {
                         byte[] buffer = mSendBuffer;
                         mSendBuffer = null;
                         // enable 485 rcv
-                        switchDirection(ENABLE_SEND);
+//                        switchDirection(ENABLE_SEND);
 
                         // ///////////////
                         System.out.print("--> ");
@@ -102,7 +102,7 @@ public abstract class ASerialEngine extends Service {
                         buffer = null;
 
                         // enable 485 rcv
-                        switchDirection(ENABLE_RCV);
+//                        switchDirection(ENABLE_RCV);
                         // System.out.println("send end " + val);
                     }
                 }
@@ -153,12 +153,12 @@ public abstract class ASerialEngine extends Service {
         //    BAUDRATE = PreferenceUtils.getPrefInt(this, config_server.RS485_BAUDRATE, 9600);
         //}
         //sjt
-        BAUDRATE=9600;
+        BAUDRATE=38400;//9600;
         Logger.d("current baudrate is " + BAUDRATE);
         mSendBuffer = new byte[1024];
 
         try {
-            mSerialPort = new SerialPort(new File("/dev/ttyS1"), BAUDRATE, 0);
+            mSerialPort = new SerialPort(new File("/dev/ttyS0"), BAUDRATE, 0);
             mOutputStream = mSerialPort.getOutputStream();
             mInputStream = mSerialPort.getInputStream();
 
