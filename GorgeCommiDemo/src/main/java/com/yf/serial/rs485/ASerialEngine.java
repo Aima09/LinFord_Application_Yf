@@ -51,7 +51,7 @@ public abstract class ASerialEngine extends Service {
                         }
                         // /////
                         if (size > 0) {
-//                            analyzeData(buffer, size);
+                            analyzeData(buffer, size);
                         }
                     }
                 } catch (IOException e) {

@@ -10,6 +10,7 @@ import android.content.Intent;
 import android.os.Binder;
 import android.os.Handler;
 import android.os.IBinder;
+import android.util.Log;
 
 import com.orhanobut.logger.Logger;
 import com.yf.serial.rs485.ASerialEngine;
@@ -25,6 +26,8 @@ public class RS485Service extends ASerialEngine {
 	private Analyzer mAnalyzer;
 	private Executor mExecutor;
 	private FeedBacker mFeedBacker;
+
+	private String recevedData;
 
 	@Override
 	public void onCreate() {
@@ -187,6 +190,12 @@ public class RS485Service extends ASerialEngine {
 			clearMask();
 			Logger.i("mCommand = "+mCommand);
 			mExecutor.handle(mRoomNumber, mCommand, mParameter);
+
+			for (int i = 0; i < size; i++) {
+				recevedData=(buffer[i] & 0xFF) + " ";
+				Log.i(TAG,"engine received===============>"+(buffer[i] & 0xFF));
+				Logger.i(" engine received===============>"+(buffer[i] & 0xFF) + " ");
+			}
 		}
 	}
 
@@ -205,6 +214,9 @@ public class RS485Service extends ASerialEngine {
 		}
 		public ISSend getISSend(){
 			return RS485Service.this.ISend;
+		}
+		public String getReceivedData(){
+			return  recevedData;
 		}
 	}
 
