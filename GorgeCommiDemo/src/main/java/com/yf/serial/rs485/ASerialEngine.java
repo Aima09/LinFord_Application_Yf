@@ -8,6 +8,7 @@ package com.yf.serial.rs485;
 
 import android.app.Service;
 import android.content.Intent;
+import android.util.Log;
 
 import com.orhanobut.logger.Logger;
 import com.yf.serial.SerialPort;
@@ -19,15 +20,8 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.security.InvalidParameterException;
 
-
-/**
- * com.YF.YuanFang.YFServer.serial.rs485.ASerialEngine
- * 
- * @author xuie <br/>
- *         create at 2015-4-30 ����9:40:29
- */
-
 public abstract class ASerialEngine extends Service {
+    public static final String TAG="ASerialEngine";
     private SerialPort mSerialPort;
     private OutputStream mOutputStream;
     private InputStream mInputStream;
@@ -52,11 +46,12 @@ public abstract class ASerialEngine extends Service {
                         size = mInputStream.read(buffer);
                         // ////////
                         for (int i = 0; i < size; i++) {
-                            Logger.i(" engine= "+(buffer[i] & 0xFF) + " ");
+                            Log.i(TAG,"engine received===============>"+(buffer[i] & 0xFF));
+                            Logger.i(" engine received===============>"+(buffer[i] & 0xFF) + " ");
                         }
                         // /////
                         if (size > 0) {
-                            analyzeData(buffer, size);
+//                            analyzeData(buffer, size);
                         }
                     }
                 } catch (IOException e) {
@@ -78,7 +73,7 @@ public abstract class ASerialEngine extends Service {
                         byte[] buffer = mSendBuffer;
                         mSendBuffer = null;
                         // enable 485 rcv
-//                        switchDirection(ENABLE_SEND);
+                        switchDirection(ENABLE_SEND);
 
                         // ///////////////
                         System.out.print("--> ");
@@ -102,7 +97,7 @@ public abstract class ASerialEngine extends Service {
                         buffer = null;
 
                         // enable 485 rcv
-//                        switchDirection(ENABLE_RCV);
+                        switchDirection(ENABLE_RCV);
                         // System.out.println("send end " + val);
                     }
                 }
@@ -153,12 +148,13 @@ public abstract class ASerialEngine extends Service {
         //    BAUDRATE = PreferenceUtils.getPrefInt(this, config_server.RS485_BAUDRATE, 9600);
         //}
         //sjt
-        BAUDRATE=38400;//9600;
+        BAUDRATE=9600;
+       // BAUDRATE=38400;
         Logger.d("current baudrate is " + BAUDRATE);
         mSendBuffer = new byte[1024];
 
         try {
-            mSerialPort = new SerialPort(new File("/dev/ttyS0"), BAUDRATE, 0);
+            mSerialPort = new SerialPort(new File("/dev/ttyS1"), BAUDRATE, 0);
             mOutputStream = mSerialPort.getOutputStream();
             mInputStream = mSerialPort.getInputStream();
 
