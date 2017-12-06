@@ -9,14 +9,17 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
-        <activity android:name=".MainActivity">
+        <activity android:name="yf.com.gorgecommidemo.MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
 
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
-        <service android:name="com.yf.serial.RS485Service"/>
+        <service
+            android:name="yf.com.gorgecommidemo.ASerialEngine"
+            android:enabled="true"
+            android:exported="true"/>
     </application>
 
 </manifest>
