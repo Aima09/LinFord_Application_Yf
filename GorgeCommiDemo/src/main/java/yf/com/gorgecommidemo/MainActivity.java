@@ -13,9 +13,12 @@ import butterknife.BindView;
 import butterknife.ButterKnife;
 import butterknife.OnClick;
 
+/**
+ * 用于串口测试通信
+ *
+ */
 public class MainActivity extends AppCompatActivity implements SerialDataManager.ReceiveData {
     private static final String TAG = "MainActivity";
-
     @BindView(R.id.tv_data)
     EditText mTvData;
     @BindView(R.id.send)

@@ -19,6 +19,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
+/**
+ * 定义接收数据和发送数据的线程
+ * 设置串口的参数
+ */
 public class ASerialEngine extends Service implements SerialDataManager.SendData{
     private SerialPort mSerialPort;
     private OutputStream mOutputStream;
@@ -26,7 +30,10 @@ public class ASerialEngine extends Service implements SerialDataManager.SendData
     private ReadThread mReadThread;
     private SendThread mSendThread;
 
+    //定义比特率
     private int BAUDRATE = 38400;
+    //定义串口程序路径
+    private String path="/dev/ttyS0";
     private boolean bReading = true;
     private byte[] mSendBuffer = new byte[1024];
 
@@ -39,7 +46,7 @@ public class ASerialEngine extends Service implements SerialDataManager.SendData
     private void init() {
         SerialDataManager.getInstance().setSendData(this);
         try {
-            mSerialPort = new SerialPort(new File("/dev/ttyS0"), BAUDRATE, 0);
+            mSerialPort = new SerialPort(new File(path), BAUDRATE, 0);
             mOutputStream = mSerialPort.getOutputStream();
             mInputStream = mSerialPort.getInputStream();
 

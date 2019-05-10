@@ -1,1 +1,1 @@
-include ':app' ,':GorgeCommiDemo'
+include ':app', ':chainfiredemo' ,':GorgeCommiDemo'
