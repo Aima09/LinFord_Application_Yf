@@ -7,18 +7,20 @@ import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.os.FileObserver;
 import android.os.IBinder;
+import android.support.annotation.Nullable;
 import android.util.Log;
 
 import com.blankj.utilcode.util.AppUtils;
 import com.blankj.utilcode.util.FileIOUtils;
 import com.blankj.utilcode.util.LogUtils;
+import com.blankj.utilcode.util.ThreadUtils;
 import com.google.common.collect.Lists;
 
 import org.androidannotations.annotations.EService;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.List;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -40,7 +42,8 @@ public class FileMonitorService extends Service {
     public static final String KEY_PACKAGE = "com.sudiyi.systemapps";
     private static final String TAG = FileMonitorService.class.getSimpleName();
     //文件修改监听事件
-    private SDCardListener mSdCardListener;
+    private SdCardListener mSdCardListener;
+    ReentrantReadWriteLock mLock = new ReentrantReadWriteLock();
 
     public FileMonitorService() {
     }
@@ -78,7 +81,7 @@ public class FileMonitorService extends Service {
 
     private void init() {
         Log.d(TAG, "init() called");
-        mSdCardListener = new SDCardListener(CHAIN_FIRE_PATH);
+        mSdCardListener = new SdCardListener(CHAIN_FIRE_PATH);
         //1.监听文件动态事件
         mSdCardListener.startWatching();
         //2.初始化文件内容,如果文件不存在的话
@@ -89,7 +92,8 @@ public class FileMonitorService extends Service {
     /**
      * 获取所有应用信息
      * 过滤 com.sudiyi.systemapps
-     * @return com.sudiyi.systemapps相关应用的packageName,uid,access
+     *
+     * @return com.sudiyi.systemapps相关应用的packageName, uid, access
      */
     private List<AppDataInfo> getPackageUid() {
         Log.d(TAG, "getPackageUid() called");
@@ -115,7 +119,10 @@ public class FileMonitorService extends Service {
         return appDataInfos;
     }
 
-    public static final String DEFAULT_CONTENT =
+    /**
+     * the default content for the file
+     */
+    private static final String DEFAULT_CONTENT =
             "[default]\n" +
                     "notify=1\n" +
                     "log=1\n" +
@@ -136,36 +143,40 @@ public class FileMonitorService extends Service {
 
     private void checkFile() {
         Log.d(TAG, "checkFile() called");
-        try {
-            File cfgFile = new File(CHAIN_FIRE_PATH);
-            //判断文件是否存在
-            if (!cfgFile.exists() || cfgFile.length() == 0) {
-                //不存在新建一个
-                cfgFile.createNewFile();
-                //写入默认任何和com.sudiyi.systemapps包名相关app的信息
-                writeFile(cfgFile);
-            } else {
-                //存在则读取该文件内容
-                List<String> dataList = FileIOUtils.readFile2List(cfgFile);
-                int count = 0;
-                //计算该文件包含com.sudiyi.systemapps的行数量
-                for (String line : dataList) {
-                    if (line.contains(KEY_PACKAGE)) {
-                        count++;
+        ThreadUtils.executeByIo(new ThreadUtils.SimpleTask<File>() {
+            @Nullable @Override public File doInBackground() throws Throwable {
+                File cfgFile = new File(CHAIN_FIRE_PATH);
+                //判断文件是否存在
+                if (!cfgFile.exists() || cfgFile.length() == 0) {
+                    //不存在新建一个
+                    cfgFile.createNewFile();
+                    //写入默认任何和com.sudiyi.systemapps包名相关app的信息
+                    writeFile(cfgFile);
+                } else {
+                    //存在则读取该文件内容
+                    List<String> dataList = FileIOUtils.readFile2List(cfgFile);
+                    int count = 0;
+                    //计算该文件包含com.sudiyi.systemapps的行数量
+                    for (String line : dataList) {
+                        if (line.contains(KEY_PACKAGE)) {
+                            count++;
+                        }
+                    }
+                    //如果该数据跟查询的数量不一致,则重写更新该文件
+                    if (count != getPackageUid().size()) {
+                        File newFile = new File(cfgFile.getPath());
+                        cfgFile.delete();
+                        writeFile(newFile);
                     }
                 }
-                //如果该数据跟查询的数量不一致,则重写更新该文件
-                if (count != getPackageUid().size()) {
-                    File newFile = new File(cfgFile.getPath());
-                    cfgFile.delete();
-                    writeFile(newFile);
-                }
+                return cfgFile;
             }
 
-        } catch (IOException e) {
-            e.printStackTrace();
-            Log.e(TAG, "checkFile: Exception=", e);
-        }
+            @Override public void onSuccess(@Nullable File result) {
+                Log.d(TAG, "onSuccess() called with: result = [" + (result != null ? result.length() : 0) + "]");
+            }
+        });
+
     }
 
     /**
@@ -175,17 +186,23 @@ public class FileMonitorService extends Service {
      */
     private void writeFile(File cfgFile) {
         Log.d(TAG, "writeFile() called with: cfgFile = [" + cfgFile + "]");
-        StringBuilder stringBuilder = new StringBuilder(DEFAULT_CONTENT);
-        List<AppDataInfo> appDataInfos = getPackageUid();
-        for (AppDataInfo info : appDataInfos) {
-            stringBuilder.append("\n")
-                    .append(info.packageName)
-                    .append("\n")
-                    .append(info.uid)
-                    .append("\n")
-                    .append(info.access);
+        mLock.writeLock().lock();
+        try {
+            StringBuilder stringBuilder = new StringBuilder(DEFAULT_CONTENT);
+            List<AppDataInfo> appDataInfos = getPackageUid();
+            for (AppDataInfo info : appDataInfos) {
+                stringBuilder.append("\n")
+                        .append(info.packageName)
+                        .append("\n")
+                        .append(info.uid)
+                        .append("\n")
+                        .append(info.access);
+            }
+            FileIOUtils.writeFileFromString(cfgFile, stringBuilder.toString());
+        } finally {
+            mLock.writeLock().unlock();
         }
-        FileIOUtils.writeFileFromString(cfgFile, stringBuilder.toString());
+
         Log.d(TAG, "writeFile() returned: file exist=" + cfgFile.exists() + ",file.length()=" + cfgFile.length());
         LogUtils.file(TAG, FileIOUtils.readFile2String(cfgFile));
     }
@@ -195,9 +212,9 @@ public class FileMonitorService extends Service {
      *
      * @author mayingcai
      */
-    public class SDCardListener extends FileObserver {
+    private class SdCardListener extends FileObserver {
 
-        public SDCardListener(String path) {
+        SdCardListener(String path) {
             /*
              * 这种构造方法是默认监听所有事件的,如果使用 super(String,int)这种构造方法，
              * 则int参数是要监听的事件类型.
@@ -211,10 +228,8 @@ public class FileMonitorService extends Service {
             switch (event) {
                 case FileObserver.ALL_EVENTS:
                     checkFile();
-                    Log.d("all", "path:" + path);
                     break;
                 case FileObserver.CREATE:
-                    Log.d("Create", "path:" + path);
                     break;
                 default:
                     break;
